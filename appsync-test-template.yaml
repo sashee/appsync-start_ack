@@ -1,0 +1,105 @@
+# AWS CloudFormation Template for AppSync Subscription Test
+# This template creates an AppSync API with a simple mutation and subscription
+# to test potential event loss after receiving start_ack messages
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AppSync API for testing subscription event loss after start_ack
+
+Resources:
+  # Main AppSync GraphQL API
+  AppSyncAPI:
+    Type: AWS::AppSync::GraphQLApi
+    Properties:
+      Name: AppSyncSubscriptionTest
+      AuthenticationType: API_KEY
+      AdditionalAuthenticationProviders: []
+
+   # Simple GraphQL Schema with mutation and subscription
+  GraphQLSchema:
+    Type: AWS::AppSync::GraphQLSchema
+    Properties:
+      ApiId: !GetAtt AppSyncAPI.ApiId
+      Definition: |
+        type Query {
+          dummy: String
+        }
+
+        type Mutation {
+          echoMessage(message: String!): String
+        }
+
+        type Subscription {
+          onEchoMessage: String
+            @aws_subscribe(mutations: ["echoMessage"])
+        }
+
+        schema {
+          query: Query
+          mutation: Mutation
+          subscription: Subscription
+        }
+
+   # NONE Data Source (no backend, returns mock data)
+  NoneDataSource:
+    Type: AWS::AppSync::DataSource
+    DependsOn: GraphQLSchema
+    Properties:
+      ApiId: !GetAtt AppSyncAPI.ApiId
+      Name: NoneDataSource
+      Type: NONE
+
+   # Resolver for echoMessage mutation
+  EchoMessageResolver:
+    Type: AWS::AppSync::Resolver
+    DependsOn: GraphQLSchema
+    Properties:
+      ApiId: !GetAtt AppSyncAPI.ApiId
+      TypeName: Mutation
+      FieldName: echoMessage
+      DataSourceName: !GetAtt NoneDataSource.Name
+      RequestMappingTemplate: |
+        {
+          "version": "2018-05-29",
+          "payload": {
+            "message": "$ctx.args.message"
+          }
+        }
+      ResponseMappingTemplate: |
+        $util.toJson($ctx.args.message)
+
+   # Resolver for onEchoMessage subscription
+  OnEchoMessageResolver:
+    Type: AWS::AppSync::Resolver
+    DependsOn: GraphQLSchema
+    Properties:
+      ApiId: !GetAtt AppSyncAPI.ApiId
+      TypeName: Subscription
+      FieldName: onEchoMessage
+      DataSourceName: !GetAtt NoneDataSource.Name
+      RequestMappingTemplate: |
+        {
+          "version": "2018-05-29",
+          "payload": $util.toJson($context.source)
+        }
+      ResponseMappingTemplate: |
+        $util.toJson($context.result)
+
+  # API Key for authentication (no expiration)
+  ApiKey:
+    Type: AWS::AppSync::ApiKey
+    Properties:
+      ApiId: !GetAtt AppSyncAPI.ApiId
+
+# Outputs for connecting to the API
+Outputs:
+  GraphQLEndpoint:
+    Description: "GraphQL Endpoint for HTTP queries/mutations"
+    Value: !GetAtt AppSyncAPI.GraphQLUrl
+  
+  RealTimeEndpoint:
+    Description: "Real-time WebSocket Endpoint for subscriptions"
+    Value: !GetAtt AppSyncAPI.RealtimeUrl
+  
+  ApiKey:
+    Description: "API Key for authentication"
+    Value: !GetAtt ApiKey.ApiKey
