@@ -103,3 +103,13 @@ Outputs:
   ApiKey:
     Description: "API Key for authentication"
     Value: !GetAtt ApiKey.ApiKey
+  
+  TestCommand:
+    Description: "Complete command to run the subscription test in a loop (copy-paste ready)"
+    Value: !Sub >-
+      export REALTIME_ENDPOINT="${AppSyncAPI.RealtimeUrl}" &&
+      export GRAPHQL_ENDPOINT="${AppSyncAPI.GraphQLUrl}" &&
+      export API_KEY="${ApiKey.ApiKey}" &&
+      while true; do echo "=== Test $(date +%H:%M:%S) ===";
+      node test_subscription.js $REALTIME_ENDPOINT $GRAPHQL_ENDPOINT $API_KEY;
+      echo "Exit code: $?"; sleep 1; done

@@ -29,24 +29,19 @@ Sometimes the `data` event does not arrive. Keeping a separate subscription (on 
 Take the yaml file and deploy to CloudFormation. In the outputs, it will print:
 
 * the realtime endpoint
-* the grapnql endpoint
+* the GraphQL endpoint
 * the API key
-
-## Setup
-
-```
-export REALTIME_ENDPOINT="wss://..."
-export GRAPHQL_ENDPOINT="https://..."
-export API_KEY="da2-..."
-```
+* **TestCommand** - the complete command to run the test (copy-paste ready)
 
 ## Run
 
+Copy the `TestCommand` output from CloudFormation and run it directly:
+
 ```
-while true; do echo "=== Test $(date +%H:%M:%S) ==="; node test_subscription.js $REALTIME_ENDPOINT $GRAPHQL_ENDPOINT $API_KEY; echo "Exit code: $?"; sleep 1; done
+export REALTIME_ENDPOINT="wss://..." && export GRAPHQL_ENDPOINT="https://..." && export API_KEY="da2-..." && while true; do echo "=== Test $(date +%H:%M:%S) ==="; node test_subscription.js $REALTIME_ENDPOINT $GRAPHQL_ENDPOINT $API_KEY; echo "Exit code: $?"; sleep 1; done
 ```
 
-Will repeatedly run the script until it hits the error in which case it will stall.
+This will repeatedly run the script until it hits the error in which case it will stall.
 
 A successful run (notice the `data` event):
 
